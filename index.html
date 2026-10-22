@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trang Chủ</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        background-color: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        width: 600px;
+        text-align: center;
+      }
+
+      /* Thông tin cá nhân */
+      .profile {
+        margin-bottom: 30px;
+      }
+      .profile img {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #2ecc71;
+        margin-bottom: 15px;
+      }
+      .profile h1 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 24px;
+      }
+      .profile p {
+        color: #7f8c8d;
+        font-size: 16px;
+        margin: 5px 0;
+      }
+
+      /* Menu liên kết */
+      .menu {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      .menu a {
+        display: block;
+        padding: 15px;
+        background-color: #3498db;
+        color: white;
+        text-decoration: none;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 5px;
+        transition: 0.3s;
+      }
+      .menu a:hover {
+        background-color: #2980b9;
+        transform: translateY(-2px);
+      }
+      .menu a.instruction {
+        background-color: #e67e22;
+      }
+      .menu a.instruction:hover {
+        background-color: #d35400;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="profile">
+        <img src="./img/print.png" alt="Hình ảnh cá nhân" />
+        <h1>Họ và tên: Nguyễn Tuấn Thành</h1>
+        <p>Mã số SV: 211A290018</p>
+        <p>Lập Trình Web</p>
+      </div>
+
+      <!-- Menu các bài tập -->
+      <div class="menu">
+        <a
+          href="https://github.com/riin520/Baitap_28.git"
+          target="_blank"
+          class="instruction"
+        >
+          Source Code trên GitHub (bài tập 27, 28, 28a, 28b)
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

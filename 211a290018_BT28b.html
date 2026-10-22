@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Kiểm Tra Tốc Độ Nâng Cấp 2 (28b)</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #1e272e;
+        color: #d2dae2;
+        margin-top: 20px;
+        user-select: none;
+      }
+      h2 {
+        color: #0be881;
+        margin-bottom: 10px;
+      }
+
+      .info-panel {
+        display: flex;
+        justify-content: space-between;
+        width: 700px;
+        background-color: #485460;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 18px;
+        font-weight: bold;
+        box-sizing: border-box;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+      .info-panel span {
+        color: #ffd32a;
+        font-size: 22px;
+      }
+
+      /* điều khiển mới */
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        align-items: center;
+      }
+
+      input[type="number"] {
+        padding: 10px;
+        font-size: 16px;
+        width: 120px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        text-align: center;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 0.3s;
+        color: #1e272e;
+      }
+      button#startBtn {
+        background-color: #0be881;
+        text-transform: uppercase;
+        padding: 10px 30px;
+        font-size: 18px;
+      }
+      button#startBtn:hover {
+        background-color: #05c46b;
+      }
+      button#startBtn:disabled {
+        background-color: #808e9b;
+        cursor: not-allowed;
+      }
+
+      button#bgBtn {
+        background-color: #3498db;
+        color: white;
+      }
+      button#playerBtn {
+        background-color: #9b59b6;
+        color: white;
+      }
+      button:hover {
+        filter: brightness(1.1);
+        transform: scale(1.02);
+      }
+
+      #arena {
+        width: 700px;
+        height: 450px;
+        background-color: #2c3e50;
+        border: 4px solid #808e9b;
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+        cursor: crosshair;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        transition: background-color 0.3s;
+      }
+      #arena.locked {
+        pointer-events: none;
+        background-color: #c0392b !important;
+      }
+
+      .target {
+        position: absolute;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        font-size: 12px;
+        animation: fadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+      .target.green {
+        background-color: #2ecc71;
+        width: 45px;
+        height: 45px;
+        box-shadow: 0 0 10px #2ecc71;
+      }
+      .target.red {
+        background-color: #e74c3c;
+        width: 50px;
+        height: 50px;
+        box-shadow: 0 0 15px #e74c3c;
+      }
+      .target.gold {
+        background-color: #f1c40f;
+        color: #333;
+        width: 35px;
+        height: 35px;
+        box-shadow: 0 0 20px #f1c40f;
+      }
+      .target.shrink {
+        animation: shrinkOut 0.2s forwards;
+      }
+
+      @keyframes fadeIn {
+        0% {
+          transform: scale(0);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes shrinkOut {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0);
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Bài Tập 28b - Game Kiểm Tra Tốc Độ (Nâng cấp 2)</h2>
+
+    <div class="info-panel">
+      <div>Điểm: <span id="score">0</span></div>
+      <div>Mạng: <span id="lives">3</span> ❤️</div>
+      <div>Level: <span id="level">1</span></div>
+      <div>T.Gian: <span id="time">0</span>s</div>
+    </div>
+
+    <!-- Khung điều khiển mới thêm vào (Yêu cầu 1, 2, 3) -->
+    <div class="controls">
+      <!-- Thời gian tùy chọn -->
+      <label for="customTime">Thời gian chơi (giây):</label>
+      <input type="number" id="customTime" value="30" min="5" max="300" />
+      <button id="startBtn">Bắt Đầu</button>
+      <button id="bgBtn">Đổi màu nền</button>
+      <button id="playerBtn">Người chơi</button>
+    </div>
+
+    <div id="arena"></div>
+
+    <script>
+      const arena = document.getElementById("arena");
+      const startBtn = document.getElementById("startBtn");
+      const bgBtn = document.getElementById("bgBtn");
+      const playerBtn = document.getElementById("playerBtn");
+      const customTimeInput = document.getElementById("customTime");
+
+      const scoreEl = document.getElementById("score");
+      const livesEl = document.getElementById("lives");
+      const levelEl = document.getElementById("level");
+      const timeEl = document.getElementById("time");
+
+      const ARENA_W = 700;
+      const ARENA_H = 450;
+      const BASE_SPAWN_RATE = 1000;
+
+      let state = {
+        score: 0,
+        lives: 3,
+        level: 1,
+        time: 30,
+        isPlaying: false,
+        activeTargets: [],
+        gameTimer: null,
+        spawnTimer: null,
+      };
+
+      // 1. Đổi màu nền ngẫu nhiên
+      bgBtn.addEventListener("click", () => {
+        const randomColor =
+          "#" + Math.floor(Math.random() * 16777215).toString(16);
+        arena.style.backgroundColor = randomColor;
+      });
+
+      // 2. Người chơi (Hiển thị Mã SV)
+      playerBtn.addEventListener("click", () => {
+        alert("211A290018 - Nguyễn Tuấn Thành");
+      });
+
+      function getValidPosition(size) {
+        let maxAttempts = 50;
+        while (maxAttempts > 0) {
+          let x = Math.floor(Math.random() * (ARENA_W - size));
+          let y = Math.floor(Math.random() * (ARENA_H - size));
+          let isValid = true;
+          for (let t of state.activeTargets) {
+            let distance = Math.sqrt(
+              Math.pow(x + size / 2 - (t.x + t.size / 2), 2) +
+                Math.pow(y + size / 2 - (t.y + t.size / 2), 2),
+            );
+            if (distance < size / 2 + t.size / 2 + 5) {
+              isValid = false;
+              break;
+            }
+          }
+          if (isValid) return { x, y };
+          maxAttempts--;
+        }
+        return null;
+      }
+
+      function spawnTarget() {
+        if (!state.isPlaying) return;
+        let rand = Math.random();
+        let type = rand < 0.6 ? "green" : rand < 0.85 ? "red" : "gold";
+        let size = type === "red" ? 50 : type === "green" ? 45 : 35;
+        let pos = getValidPosition(size);
+
+        if (!pos) {
+          scheduleNextSpawn();
+          return;
+        }
+
+        let el = document.createElement("div");
+        el.className = `target ${type}`;
+        el.style.left = pos.x + "px";
+        el.style.top = pos.y + "px";
+        if (type === "red") el.innerText = "X";
+        if (type === "gold") el.innerText = "★";
+
+        let actualDuration =
+          (type === "gold" ? 1500 : 2500) * Math.pow(0.85, state.level - 1);
+
+        let targetObj = {
+          id: Date.now() + Math.random(),
+          x: pos.x,
+          y: pos.y,
+          size: size,
+          type: type,
+          element: el,
+          timeoutId: null,
+        };
+
+        targetObj.timeoutId = setTimeout(() => {
+          if (type === "gold" && state.isPlaying) updateLives(-1);
+          removeTarget(targetObj.id);
+        }, actualDuration);
+
+        el.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+          if (!state.isPlaying) return;
+          clearTimeout(targetObj.timeoutId);
+
+          if (type === "green") updateScore(1);
+          else if (type === "red") {
+            updateScore(-2);
+            updateLives(-1);
+          } else if (type === "gold") {
+            updateScore(3);
+            updateTime(2);
+          }
+
+          removeTarget(targetObj.id, true);
+        });
+
+        state.activeTargets.push(targetObj);
+        arena.appendChild(el);
+        scheduleNextSpawn();
+      }
+
+      function scheduleNextSpawn() {
+        if (!state.isPlaying) return;
+        state.spawnTimer = setTimeout(
+          spawnTarget,
+          BASE_SPAWN_RATE * Math.pow(0.85, state.level - 1),
+        );
+      }
+
+      function removeTarget(id, withAnim = false) {
+        let index = state.activeTargets.findIndex((t) => t.id === id);
+        if (index > -1) {
+          let t = state.activeTargets[index];
+          state.activeTargets.splice(index, 1);
+          if (withAnim) {
+            t.element.classList.add("shrink");
+            setTimeout(() => t.element.remove(), 200);
+          } else t.element.remove();
+        }
+      }
+
+      arena.addEventListener("mousedown", (e) => {
+        if (!state.isPlaying) return;
+        if (e.target === arena) {
+          arena.classList.add("locked");
+          updateScore(-1);
+          setTimeout(() => arena.classList.remove("locked"), 500);
+        }
+      });
+
+      function updateScore(val) {
+        state.score += val;
+        if (state.score < 0) state.score = 0;
+        scoreEl.innerText = state.score;
+        let newLevel = Math.floor(state.score / 10) + 1;
+        if (newLevel > state.level) {
+          state.level = newLevel;
+          levelEl.innerText = state.level;
+        }
+      }
+
+      function updateLives(val) {
+        state.lives += val;
+        livesEl.innerText = state.lives;
+        if (state.lives <= 0) endGame("HẾT MẠNG!");
+      }
+
+      function updateTime(val) {
+        state.time += val;
+        timeEl.innerText = state.time;
+      }
+
+      function startGame() {
+        // 3. Đưa vào thời gian chạy ngược tùy chọn
+        let customTime = parseInt(customTimeInput.value);
+        if (isNaN(customTime) || customTime <= 0) customTime = 30;
+
+        state.score = 0;
+        state.lives = 3;
+        state.level = 1;
+        state.time = customTime;
+        state.isPlaying = true;
+        state.activeTargets = [];
+        arena.innerHTML = "";
+
+        scoreEl.innerText = state.score;
+        livesEl.innerText = state.lives;
+        levelEl.innerText = state.level;
+        timeEl.innerText = state.time;
+
+        startBtn.disabled = true;
+        customTimeInput.disabled = true; // Khóa ô nhập khi đang chơi
+
+        state.gameTimer = setInterval(() => {
+          state.time--;
+          timeEl.innerText = state.time;
+          if (state.time <= 0) endGame("HẾT GIỜ!");
+        }, 1000);
+
+        spawnTarget();
+      }
+
+      function endGame(reason) {
+        state.isPlaying = false;
+        startBtn.disabled = false;
+        customTimeInput.disabled = false;
+        clearInterval(state.gameTimer);
+        clearTimeout(state.spawnTimer);
+        state.activeTargets.forEach((t) => clearTimeout(t.timeoutId));
+
+        setTimeout(() => {
+          // Yêu cầu: Khóa toàn bộ thao tác và hiển thị tổng số điểm đạt được
+          alert(
+            `🎮 ${reason}\n\nTổng điểm cuối cùng: ${state.score}\nLevel đạt được: ${state.level}`,
+          );
+          arena.innerHTML = "";
+        }, 100);
+      }
+
+      startBtn.addEventListener("click", startGame);
+    </script>
+  </body>
+</html>
