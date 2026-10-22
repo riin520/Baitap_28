@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Kiểm Tra Tốc Độ Nâng Cao</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #1e272e;
+        color: #d2dae2;
+        margin-top: 20px;
+        user-select: none;
+      }
+
+      h2 {
+        color: #0be881;
+        margin-bottom: 10px;
+      }
+
+      /* Bảng điều khiển */
+      .info-panel {
+        display: flex;
+        justify-content: space-between;
+        width: 700px;
+        background-color: #485460;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 18px;
+        font-weight: bold;
+        box-sizing: border-box;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+      .info-panel span {
+        color: #ffd32a;
+        font-size: 22px;
+      }
+
+      button#startBtn {
+        padding: 12px 40px;
+        font-size: 20px;
+        font-weight: bold;
+        background-color: #0be881;
+        color: #1e272e;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-bottom: 20px;
+        transition: 0.3s;
+        text-transform: uppercase;
+      }
+      button#startBtn:hover {
+        background-color: #05c46b;
+        transform: scale(1.05);
+      }
+      button#startBtn:disabled {
+        background-color: #808e9b;
+        cursor: not-allowed;
+        transform: scale(1);
+      }
+
+      /* Khu vực chơi*/
+      #arena {
+        width: 700px;
+        height: 450px;
+        background-color: #2c3e50;
+        border: 4px solid #808e9b;
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+        cursor: crosshair;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        transition: background-color 0.2s;
+      }
+      #arena.locked {
+        pointer-events: none;
+        background-color: #c0392b !important;
+      }
+
+      .target {
+        position: absolute;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        font-size: 12px;
+        /* Hiệu ứng xuất hiện */
+        animation: fadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+
+      /* Mục tiêu chuẩn */
+      .target.green {
+        background-color: #2ecc71;
+        width: 45px;
+        height: 45px;
+        box-shadow: 0 0 10px #2ecc71;
+      }
+      /* Mục tiêu bẫy */
+      .target.red {
+        background-color: #e74c3c;
+        width: 50px;
+        height: 50px;
+        box-shadow: 0 0 15px #e74c3c;
+      }
+      /* Mục tiêu Vàng (Biến mất nhanh) */
+      .target.gold {
+        background-color: #f1c40f;
+        color: #333;
+        width: 35px;
+        height: 35px;
+        box-shadow: 0 0 20px #f1c40f;
+      }
+
+      .target.shrink {
+        animation: shrinkOut 0.2s forwards;
+      }
+
+      @keyframes fadeIn {
+        0% {
+          transform: scale(0);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes shrinkOut {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0);
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>GAME KIỂM TRA TỐC ĐỘ</h2>
+
+    <!-- Bảng điều khiển mở rộng -->
+    <div class="info-panel">
+      <div>Điểm: <span id="score">0</span></div>
+      <div>Mạng: <span id="lives">3</span> ❤️</div>
+      <div>Level: <span id="level">1</span></div>
+      <div>T.Gian: <span id="time">30</span>s</div>
+      <div>Đỉnh cao: <span id="highScore">0</span></div>
+    </div>
+
+    <button id="startBtn">Bắt Đầu</button>
+
+    <div id="arena"></div>
+
+    <script>
+      const arena = document.getElementById("arena");
+      const startBtn = document.getElementById("startBtn");
+      const scoreEl = document.getElementById("score");
+      const livesEl = document.getElementById("lives");
+      const levelEl = document.getElementById("level");
+      const timeEl = document.getElementById("time");
+      const highScoreEl = document.getElementById("highScore");
+
+      const ARENA_W = 700;
+      const ARENA_H = 450;
+      const BASE_SPAWN_RATE = 1000;
+
+      let state = {
+        score: 0,
+        lives: 3,
+        level: 1,
+        time: 30,
+        isPlaying: false,
+        highScore: 0,
+        activeTargets: [], // Mảng lưu trữ quản lý vòng đời mục tiêu
+        gameTimer: null,
+        spawnTimer: null,
+      };
+
+      const HS_KEY = "bt28a_hs_data";
+
+      function loadHighScore() {
+        try {
+          let encoded = localStorage.getItem(HS_KEY);
+          if (encoded) {
+            let decoded = atob(encoded).split("_")[0];
+            state.highScore = parseInt(decoded) || 0;
+            highScoreEl.innerText = state.highScore;
+          }
+        } catch (e) {
+          console.error("Lỗi đọc HighScore");
+        }
+      }
+
+      function saveHighScore() {
+        if (state.score > state.highScore) {
+          state.highScore = state.score;
+          highScoreEl.innerText = state.highScore;
+          // Mã hóa: Nối điểm số với 1 chuỗi random rồi mã hóa Base64
+          let salt = Math.random().toString(36).substring(2);
+          let encoded = btoa(state.score + "_" + salt);
+          localStorage.setItem(HS_KEY, encoded);
+        }
+      }
+      loadHighScore();
+
+      /* ================= LOGIC CHỐNG ĐÈ MỤC TIÊU) ================= */
+      function getValidPosition(size) {
+        let maxAttempts = 50; // Thử tối đa 50 lần để tìm chỗ trống
+        while (maxAttempts > 0) {
+          let x = Math.floor(Math.random() * (ARENA_W - size));
+          let y = Math.floor(Math.random() * (ARENA_H - size));
+          let isValid = true;
+
+          // Kiểm tra khoảng cách với toàn bộ mục tiêu đang có trên sân
+          for (let t of state.activeTargets) {
+            let centerX1 = x + size / 2;
+            let centerY1 = y + size / 2;
+            let centerX2 = t.x + t.size / 2;
+            let centerY2 = t.y + t.size / 2;
+            let distance = Math.sqrt(
+              Math.pow(centerX1 - centerX2, 2) +
+                Math.pow(centerY1 - centerY2, 2),
+            );
+
+            // Nếu khoảng cách < tổng 2 bán kính + 5px khoảng cách an toàn
+            if (distance < size / 2 + t.size / 2 + 5) {
+              isValid = false;
+              break;
+            }
+          }
+          if (isValid) return { x, y };
+          maxAttempts--;
+        }
+        return null; // Trả về null nếu sân quá chật
+      }
+
+      function spawnTarget() {
+        if (!state.isPlaying) return;
+
+        // Xác định loại mục tiêu theo tỷ lệ: 60% Xanh, 25% Đỏ, 15% Vàng
+        let rand = Math.random();
+        let type = rand < 0.6 ? "green" : rand < 0.85 ? "red" : "gold";
+
+        let size = type === "red" ? 50 : type === "green" ? 45 : 35;
+        let pos = getValidPosition(size);
+
+        if (!pos) {
+          // Nếu sân chật, đợi 1 chút rồi thử sinh lại
+          scheduleNextSpawn();
+          return;
+        }
+
+        // Tạo phần tử DOM
+        let el = document.createElement("div");
+        el.className = `target ${type}`;
+        el.style.left = pos.x + "px";
+        el.style.top = pos.y + "px";
+        if (type === "red") el.innerText = "X";
+        if (type === "gold") el.innerText = "★";
+
+        // Tính toán Dynamic Scaling (Tăng độ khó, rút ngắn 15% thời gian mỗi Level)
+        let durationBase = type === "gold" ? 1500 : 2500;
+        let actualDuration = durationBase * Math.pow(0.85, state.level - 1);
+
+        // Quản lý vòng đời (Lifecycle)
+        let targetObj = {
+          id: Date.now() + Math.random(),
+          x: pos.x,
+          y: pos.y,
+          size: size,
+          type: type,
+          element: el,
+          timeoutId: null,
+        };
+
+        // Hàm tự động dọn dẹp khi hết hạn (không kịp click)
+        targetObj.timeoutId = setTimeout(() => {
+          // Nếu là mục tiêu Vàng mà để biến mất -> Phạt 1 mạng
+          if (type === "gold" && state.isPlaying) {
+            updateLives(-1);
+          }
+          removeTarget(targetObj.id);
+        }, actualDuration);
+
+        // Xử lý Click trúng mục tiêu
+        el.addEventListener("mousedown", (e) => {
+          e.stopPropagation(); // QUAN TRỌNG: Ngăn event truyền xuống Arena để không bị dính phạt Anti-Bot
+          if (!state.isPlaying) return;
+
+          clearTimeout(targetObj.timeoutId); // Dọn dẹp memory ngay lập tức
+
+          // Áp dụng luật điểm số
+          if (type === "green") {
+            updateScore(1);
+          } else if (type === "red") {
+            updateScore(-2);
+            updateLives(-1);
+          } else if (type === "gold") {
+            updateScore(3);
+            updateTime(2);
+          }
+
+          removeTarget(targetObj.id, true);
+        });
+
+        state.activeTargets.push(targetObj);
+        arena.appendChild(el);
+
+        scheduleNextSpawn();
+      }
+
+      function scheduleNextSpawn() {
+        if (!state.isPlaying) return;
+        let currentSpawnRate =
+          BASE_SPAWN_RATE * Math.pow(0.85, state.level - 1);
+        state.spawnTimer = setTimeout(spawnTarget, currentSpawnRate);
+      }
+
+      function removeTarget(id, withAnim = false) {
+        let index = state.activeTargets.findIndex((t) => t.id === id);
+        if (index > -1) {
+          let t = state.activeTargets[index];
+          state.activeTargets.splice(index, 1);
+
+          if (withAnim) {
+            t.element.classList.add("shrink");
+            setTimeout(() => t.element.remove(), 200); // Đợi CSS anim chạy xong
+          } else {
+            t.element.remove();
+          }
+        }
+      }
+
+      /* ================= CƠ CHẾ CHỐNG GIAN LẬN ANTI-BOT ================= */
+      arena.addEventListener("mousedown", (e) => {
+        if (!state.isPlaying) return;
+        //
+        if (e.target === arena) {
+          arena.classList.add("locked");
+          updateScore(-1);
+          setTimeout(() => {
+            arena.classList.remove("locked");
+          }, 500);
+        }
+      });
+
+      function updateScore(val) {
+        state.score += val;
+        if (state.score < 0) state.score = 0;
+        scoreEl.innerText = state.score;
+
+        // Check lên Level (Cứ 10 điểm = 1 Level)
+        let newLevel = Math.floor(state.score / 10) + 1;
+        if (newLevel > state.level) {
+          state.level = newLevel;
+          levelEl.innerText = state.level;
+          // Nháy màu vàng báo hiệu lên cấp
+          levelEl.style.color = "white";
+          setTimeout(() => (levelEl.style.color = "#ffd32a"), 300);
+        }
+      }
+
+      function updateLives(val) {
+        state.lives += val;
+        livesEl.innerText = state.lives;
+        if (state.lives <= 0) {
+          endGame("HẾT MẠNG!");
+        }
+      }
+
+      function updateTime(val) {
+        state.time += val;
+        timeEl.innerText = state.time;
+      }
+
+      /* ================= QUẢN LÝ GAME (START / END) ================= */
+      function startGame() {
+        state.score = 0;
+        state.lives = 3;
+        state.level = 1;
+        state.time = 30;
+        state.isPlaying = true;
+        state.activeTargets = [];
+        arena.innerHTML = "";
+
+        scoreEl.innerText = state.score;
+        livesEl.innerText = state.lives;
+        levelEl.innerText = state.level;
+        timeEl.innerText = state.time;
+
+        startBtn.disabled = true;
+
+        // Bộ đếm đồng hồ tổng
+        state.gameTimer = setInterval(() => {
+          state.time--;
+          timeEl.innerText = state.time;
+          if (state.time <= 0) {
+            endGame("HẾT GIỜ!");
+          }
+        }, 1000);
+
+        spawnTarget();
+      }
+
+      function endGame(reason) {
+        state.isPlaying = false;
+        startBtn.disabled = false;
+
+        clearInterval(state.gameTimer);
+        clearTimeout(state.spawnTimer);
+
+        state.activeTargets.forEach((t) => clearTimeout(t.timeoutId));
+
+        saveHighScore();
+
+        setTimeout(() => {
+          alert(
+            `🎮 ${reason}\n\nTổng điểm: ${state.score}\nLevel đạt được: ${state.level}`,
+          );
+          arena.innerHTML = ""; // Clear DOM
+        }, 100);
+      }
+
+      startBtn.addEventListener("click", startGame);
+    </script>
+  </body>
+</html>
